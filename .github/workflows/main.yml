@@ -41,7 +41,7 @@ jobs:
         file: ./Dockerfile
         push: true
         # ÚS DE LA NOVA VARIABLE DE SORTIDA
-        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/Demo_Image:${{ steps.extract_tag.outputs.version_tag }}
+        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/demo_image:${{ steps.extract_tag.outputs.version_tag }}
 
     - name: Image digest
       run: echo ${{ steps.docker_build.outputs.digest }}
