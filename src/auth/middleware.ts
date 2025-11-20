@@ -1,0 +1,72 @@
+import { Request, Response, NextFunction } from "express";
+import { verifyToken, verifyRefreshToken } from "./token";
+
+export function authenticateToken(req: Request, res: Response, next: NextFunction) {
+    const authHeader = req.headers["authorization"];
+    const token: string = (authHeader && authHeader.split(" ")[1]) ?? "";
+
+    if (!token) {
+        return res.status(401).json({ error: "Token requerido" });
+    }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+        return res.status(401).json({ error: "Token inválido o expirado" });
+    }
+
+    console.log("Token verificado, usuario:", decoded);
+    (req as any).user = decoded;
+    next();
+}
+
+export function authenticateOwner(req: Request, res: Response, next: NextFunction) {
+    const authHeader = req.headers["authorization"];
+    const token: string = (authHeader && authHeader.split(" ")[1]) ?? "";
+
+    if (!token) {
+        return res.status(401).json({ error: "Token requerido" });
+    }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+        return res.status(401).json({ error: "Token inválido o expirado" });
+    }
+
+    const userIdFromToken: string = (decoded as any).payload.id;
+    const userIdFromParams: string = req.params.id;
+
+    // Solo permitir si es el propio usuario
+    if (userIdFromToken === userIdFromParams) {
+        console.log("Acceso autorizado para usuario:", decoded);
+        (req as any).user = decoded;
+        next();
+    } else {
+        return res.status(403).json({ error: "No tienes permisos para realizar esta acción" });
+    }
+}
+
+export function authenticateRefreshToken(req: Request, res: Response, next: NextFunction) {
+    try {
+        const { refreshToken, userId } = req.body;
+        if (!refreshToken || !userId) {
+            return res.status(401).json({ error: "Refresh token y userId requeridos" });
+        }
+
+        const decoded = verifyRefreshToken(refreshToken);
+        if (!decoded) {
+            return res.status(401).json({ error: "Refresh token inválido o expirado" });
+        }
+        (req as any).user = decoded;
+
+        const refreshtokenUserid: string = (decoded as any).payload.id;
+        if (refreshtokenUserid !== userId) {
+            return res.status(403).json({ error: "El userId no coincide con el del token" });
+        }
+
+        console.log("Refresh token verificado correctamente:", decoded);
+        next();
+    } catch (error) {
+        console.error("Error al verificar refresh token:", error);
+        return res.status(500).json({ error: "Error interno en la verificación del refresh token" });
+    }
+}
